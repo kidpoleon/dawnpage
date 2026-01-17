@@ -9,7 +9,6 @@ import { EditClockModal } from "@/components/EditClockModal";
 import { EditWeatherModal } from "@/components/EditWeatherModal";
 import { EditLinkModal } from "@/components/EditLinkModal";
 import { LinkGrid } from "@/components/LinkGrid";
-import { Snow } from "@/components/Snow";
 import { AmbientCanvas } from "@/components/AmbientCanvas";
 import { TagBar } from "@/components/TagBar";
 import { NoiseOverlay } from "@/components/NoiseOverlay";
@@ -135,11 +134,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen text-white">
       <AmbientCanvas enabled={config.wallpaper.enabled} />
       <NoiseOverlay enabled={config.wallpaper.enabled} />
       <CursorGlow enabled={config.wallpaper.enabled} />
-      <Snow />
       <ThemeProvider theme={config.theme} />
       <Wallpaper
         enabled={config.wallpaper.enabled}
