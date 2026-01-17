@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type WallpaperState =
   | { state: "idle" }
   | { state: "loading" }
-  | { state: "ready"; url: string }
+  | { state: "ready"; url: string; source: "bing" | "picsum" }
   | { state: "error"; message: string };
 
 function dailyPicsumUrl() {
@@ -14,6 +14,14 @@ function dailyPicsumUrl() {
     d.getDate()
   ).padStart(2, "0")}`;
   return `https://picsum.photos/seed/${encodeURIComponent(seed)}/1920/1080`;
+}
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 async function tryFetchBingUrl(): Promise<string | null> {
@@ -40,8 +48,22 @@ async function preloadImage(url: string): Promise<boolean> {
   });
 }
 
-export function Wallpaper({ enabled, dim, blurPx }: { enabled: boolean; dim: number; blurPx: number }) {
+export function Wallpaper({
+  enabled,
+  dim,
+  blurPx,
+  refreshKey,
+  onStatus,
+}: {
+  enabled: boolean;
+  dim: number;
+  blurPx: number;
+  refreshKey?: number;
+  onStatus?: (s: WallpaperState) => void;
+}) {
   const [wallpaper, setWallpaper] = useState<WallpaperState>({ state: "idle" });
+
+  const cacheStorageKey = useMemo(() => `dawnpage.wallpaper.${todayKey()}`, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -50,15 +72,42 @@ export function Wallpaper({ enabled, dim, blurPx }: { enabled: boolean; dim: num
     (async () => {
       try {
         setWallpaper({ state: "loading" });
+
+        // Try local cache first unless user explicitly refreshed.
+        if (typeof window !== "undefined" && !refreshKey) {
+          const raw = window.localStorage.getItem(cacheStorageKey);
+          if (raw) {
+            try {
+              const cached = JSON.parse(raw) as { url?: string; source?: "bing" | "picsum" };
+              if (cached?.url && (cached.source === "bing" || cached.source === "picsum")) {
+                const ok = await preloadImage(cached.url);
+                if (!cancelled && ok) {
+                  setWallpaper({ state: "ready", url: cached.url, source: cached.source });
+                  return;
+                }
+              }
+            } catch {
+              // ignore cache parse failures
+            }
+          }
+        }
+
         const picsum = dailyPicsumUrl();
         const bing = (await tryFetchBingUrl()) ?? null;
 
-        const candidates = [bing, picsum].filter(Boolean) as string[];
-        for (const url of candidates) {
-          const ok = await preloadImage(url);
+        const candidates = [
+          bing ? ({ url: bing, source: "bing" } as const) : null,
+          ({ url: picsum, source: "picsum" } as const),
+        ].filter(Boolean) as Array<{ url: string; source: "bing" | "picsum" }>;
+
+        for (const c of candidates) {
+          const ok = await preloadImage(c.url);
           if (cancelled) return;
           if (ok) {
-            setWallpaper({ state: "ready", url });
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem(cacheStorageKey, JSON.stringify({ url: c.url, source: c.source }));
+            }
+            setWallpaper({ state: "ready", url: c.url, source: c.source });
             return;
           }
         }
@@ -74,7 +123,11 @@ export function Wallpaper({ enabled, dim, blurPx }: { enabled: boolean; dim: num
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, cacheStorageKey, refreshKey]);
+
+  useEffect(() => {
+    onStatus?.(wallpaper);
+  }, [wallpaper, onStatus]);
 
   if (!enabled) return null;
   if (wallpaper.state !== "ready") {

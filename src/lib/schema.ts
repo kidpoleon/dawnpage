@@ -92,6 +92,13 @@ export type WidgetLayout = z.infer<typeof WidgetLayoutSchema>;
 export const ThemeSchema = z.enum(["dark", "light"]);
 export type Theme = z.infer<typeof ThemeSchema>;
 
+export const EffectsSchema = z.object({
+  ambientCanvas: z.boolean().default(true),
+  noise: z.boolean().default(true),
+  cursorGlow: z.boolean().default(true),
+});
+export type Effects = z.infer<typeof EffectsSchema>;
+
 export const AppConfigSchema = z.object({
   version: z.number().int().default(1),
   theme: ThemeSchema.default("dark"),
@@ -105,6 +112,7 @@ export const AppConfigSchema = z.object({
     dim: z.number().min(0).max(1).default(0.55),
     blurPx: z.number().min(0).max(32).default(8),
   }),
+  effects: EffectsSchema.default({ ambientCanvas: true, noise: true, cursorGlow: true }),
   links: z.object({
     sections: z.array(LinkSectionSchema).default([]),
     items: z.array(LinkItemSchema).default([]),

@@ -13,6 +13,11 @@ export const DEFAULT_CONFIG: AppConfig = {
     dim: 0.55,
     blurPx: 8,
   },
+  effects: {
+    ambientCanvas: true,
+    noise: true,
+    cursorGlow: true,
+  },
   links: {
     sections: [
       { id: "main", title: "Main", sort: 0 },
@@ -24,6 +29,7 @@ export const DEFAULT_CONFIG: AppConfig = {
         title: "GitHub",
         url: "https://github.com/",
         sectionId: "dev",
+        sort: 0,
         open: "new_tab",
         tags: ["code"],
         icon: { type: "favicon" },
@@ -33,6 +39,7 @@ export const DEFAULT_CONFIG: AppConfig = {
         title: "Gmail",
         url: "https://mail.google.com/",
         sectionId: "main",
+        sort: 1,
         open: "new_tab",
         tags: ["mail"],
         icon: { type: "favicon" },

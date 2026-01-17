@@ -13,6 +13,9 @@ import { AmbientCanvas } from "@/components/AmbientCanvas";
 import { TagBar } from "@/components/TagBar";
 import { NoiseOverlay } from "@/components/NoiseOverlay";
 import { CursorGlow } from "@/components/CursorGlow";
+import { SettingsModal } from "@/components/SettingsModal";
+import { ShortcutsModal } from "@/components/ShortcutsModal";
+import { StatusStrip, type WallpaperStatus, type WeatherStatus } from "@/components/StatusStrip";
 import type { LinkItem, LinkSection, Widget } from "@/lib/schema";
 
 function googleSearchUrl(query: string) {
@@ -22,7 +25,8 @@ function googleSearchUrl(query: string) {
 }
 
 export default function App() {
-  const { ready, config, updateConfig } = useLocalStorageConfig();
+  const { ready, config, updateConfig, exportConfig, importConfig, validateConfig, resetConfig, lastSavedAt } =
+    useLocalStorageConfig();
   const [query, setQuery] = useState("");
 
   const searchRef = useRef<HTMLInputElement>(null);
@@ -31,6 +35,12 @@ export default function App() {
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [wallpaperRefreshKey, setWallpaperRefreshKey] = useState(0);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  const [wallpaperStatus, setWallpaperStatus] = useState<WallpaperStatus>({ state: "idle" });
+  const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>({ state: "idle" });
 
   const filteredLinks = useMemo(() => {
     if (!config) return [];
@@ -92,7 +102,7 @@ export default function App() {
     return config.links.items.find((l) => l.id === editingLinkId) ?? null;
   }, [config, editingLinkId]);
 
-  const modalOpen = addOpen || !!editingLinkId || !!editingWidgetId;
+  const modalOpen = addOpen || !!editingLinkId || !!editingWidgetId || settingsOpen || shortcutsOpen;
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -112,6 +122,16 @@ export default function App() {
       if (e.key.toLowerCase() === "a") {
         e.preventDefault();
         setAddOpen(true);
+      }
+
+      if (e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        setSettingsOpen(true);
+      }
+
+      if (e.key === "?") {
+        e.preventDefault();
+        setShortcutsOpen(true);
       }
 
       if (e.key === "Escape") {
@@ -135,17 +155,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-white">
-      <AmbientCanvas enabled={config.wallpaper.enabled} />
-      <NoiseOverlay enabled={config.wallpaper.enabled} />
-      <CursorGlow enabled={config.wallpaper.enabled} />
+      <AmbientCanvas enabled={config.wallpaper.enabled && config.effects.ambientCanvas} />
+      <NoiseOverlay enabled={config.wallpaper.enabled && config.effects.noise} />
+      <CursorGlow enabled={config.wallpaper.enabled && config.effects.cursorGlow} />
       <ThemeProvider theme={config.theme} />
       <Wallpaper
         enabled={config.wallpaper.enabled}
         dim={config.wallpaper.dim}
         blurPx={config.wallpaper.blurPx}
+        refreshKey={wallpaperRefreshKey}
+        onStatus={(s) => {
+          if (s.state === "ready") setWallpaperStatus({ state: "ready", source: s.source, url: s.url });
+          else if (s.state === "error") setWallpaperStatus({ state: "error", message: s.message });
+          else setWallpaperStatus({ state: s.state });
+        }}
       />
 
-      <div className="relative z-10 mx-auto max-w-6xl px-6 py-10">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <img src="/favicons/favicon-32x32.png" alt="" className="h-4 w-4 rounded-sm" />
@@ -158,27 +184,51 @@ export default function App() {
               <span className="mx-1">·</span>
               <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">A</span>
               <span>add</span>
+              <span className="mx-1">·</span>
+              <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">S</span>
+              <span>settings</span>
+              <span className="mx-1">·</span>
+              <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">?</span>
+              <span>help</span>
             </div>
+            <button
+              type="button"
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+              onClick={() => setSettingsOpen(true)}
+              title="Settings"
+            >
+              Settings
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+              onClick={() => setShortcutsOpen(true)}
+              title="Keyboard shortcuts"
+            >
+              Help
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+              onClick={() => setAddOpen(true)}
+              title="Add link"
+            >
+              Add link
+            </button>
             {tagFilter ? (
               <button
                 type="button"
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
                 onClick={() => setTagFilter(null)}
                 title="Clear tag filter"
               >
                 Clear tag
               </button>
             ) : null}
-            <button
-              type="button"
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 transition hover:bg-white/10"
-              onClick={() => setAddOpen(true)}
-              title="Add link"
-            >
-              Add link
-            </button>
           </div>
         </div>
+
+        <StatusStrip wallpaper={wallpaperStatus} weather={weatherStatus} lastSavedAt={lastSavedAt} />
 
         <div className="mt-4">
           <TagBar
@@ -215,6 +265,11 @@ export default function App() {
               }));
             }}
             onEditWidget={(widgetId) => setEditingWidgetId(widgetId)}
+            onWeatherStatus={(s) => {
+              if (s.state === "ready") setWeatherStatus({ state: "ready" });
+              else if (s.state === "error") setWeatherStatus({ state: "error", message: s.message });
+              else setWeatherStatus({ state: s.state });
+            }}
           />
         </div>
 
@@ -388,6 +443,22 @@ export default function App() {
           }));
         }}
       />
+
+      {config ? (
+        <SettingsModal
+          open={settingsOpen}
+          config={config}
+          onClose={() => setSettingsOpen(false)}
+          onUpdate={updateConfig}
+          onExport={exportConfig}
+          onImport={importConfig}
+          onValidate={validateConfig}
+          onReset={resetConfig}
+          onRefreshWallpaper={() => setWallpaperRefreshKey((k) => k + 1)}
+        />
+      ) : null}
+
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

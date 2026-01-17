@@ -30,19 +30,25 @@ function toStoredLayout(layout: Layout): WidgetLayout[] {
   }));
 }
 
-function renderWidget(w: Widget, onEditWidget: (id: string) => void) {
-  if (w.type === "clock") {
-    return <ClockWidget title={w.title} timezone={w.timezone} onEdit={() => onEditWidget(w.id)} />;
+function renderWidget(
+  widget: Widget,
+  onEditWidget: (id: string) => void,
+  onWeatherStatus?: (s: { state: "idle" | "loading" } | { state: "ready" } | { state: "error"; message: string }) => void
+) {
+  if (widget.type === "clock") {
+    return <ClockWidget title={widget.title} timezone={widget.timezone} onEdit={() => onEditWidget(widget.id)} />;
   }
-  if (w.type === "weather") {
+
+  if (widget.type === "weather") {
     return (
       <WeatherWidget
-        title={w.title}
-        latitude={w.latitude}
-        longitude={w.longitude}
-        timezone={w.timezone}
-        unit={w.unit}
-        onEdit={() => onEditWidget(w.id)}
+        title={widget.title}
+        latitude={widget.latitude}
+        longitude={widget.longitude}
+        timezone={widget.timezone}
+        unit={widget.unit}
+        onEdit={() => onEditWidget(widget.id)}
+        onStatus={onWeatherStatus}
       />
     );
   }
@@ -53,10 +59,12 @@ export function WidgetGrid({
   config,
   onChangeLayout,
   onEditWidget,
+  onWeatherStatus,
 }: {
   config: AppConfig;
   onChangeLayout: (layout: WidgetLayout[]) => void;
   onEditWidget: (widgetId: string) => void;
+  onWeatherStatus?: (s: { state: "idle" | "loading" } | { state: "ready" } | { state: "error"; message: string }) => void;
 }) {
   const items = useMemo(
     () => config.widgets.items.filter((w) => w.type !== "status"),
@@ -102,7 +110,7 @@ export function WidgetGrid({
               >
                 Drag
               </div>
-              {renderWidget(w, onEditWidget)}
+              {renderWidget(w, onEditWidget, onWeatherStatus)}
             </div>
           ))}
         </GridLayout>

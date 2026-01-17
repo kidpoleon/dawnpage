@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export function CursorGlow({ enabled = true }: { enabled?: boolean }) {
   const [motionOk, setMotionOk] = useState(true);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [visible, setVisible] = useState(true);
+  const rafRef = useRef<number | null>(null);
+  const nextRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const mql = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -20,9 +23,28 @@ export function CursorGlow({ enabled = true }: { enabled?: boolean }) {
   useEffect(() => {
     if (!enabled || !motionOk) return;
 
-    const onMove = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
+    const onVis = () => setVisible(document.visibilityState === "visible");
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
+
+    const flush = () => {
+      rafRef.current = null;
+      if (nextRef.current) setPos(nextRef.current);
+    };
+
+    const onMove = (e: MouseEvent) => {
+      nextRef.current = { x: e.clientX, y: e.clientY };
+      if (rafRef.current) return;
+      rafRef.current = window.requestAnimationFrame(flush);
+    };
+
     window.addEventListener("mousemove", onMove, { passive: true });
-    return () => window.removeEventListener("mousemove", onMove);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("mousemove", onMove);
+      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
   }, [enabled, motionOk]);
 
   const style = useMemo(() => {
@@ -34,7 +56,7 @@ export function CursorGlow({ enabled = true }: { enabled?: boolean }) {
     } as React.CSSProperties;
   }, [pos]);
 
-  if (!enabled || !motionOk) return null;
+  if (!enabled || !motionOk || !visible) return null;
 
   return <div className="pointer-events-none fixed inset-0 z-[6]" style={style} />;
 }

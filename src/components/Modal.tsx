@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export function Modal({
@@ -22,6 +22,7 @@ export function Modal({
   const [visible, setVisible] = useState(open);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
 
   const focusableSelector = useMemo(
     () =>
@@ -122,6 +123,7 @@ export function Modal({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
           "relative w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 p-5 text-white shadow-2xl backdrop-blur-xl outline-none",
@@ -131,10 +133,12 @@ export function Modal({
         )}
       >
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-white/90">{title}</div>
+          <div id={titleId} className="text-sm font-semibold text-white/90">
+            {title}
+          </div>
           <button
             type="button"
-            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
             onClick={onClose}
           >
             Esc

@@ -20,6 +20,7 @@ export function AmbientCanvas({ enabled = true }: { enabled?: boolean }) {
   const rafRef = useRef<number | null>(null);
   const blobsRef = useRef<Blob[]>([]);
   const [motionOk, setMotionOk] = useState(true);
+  const [visible, setVisible] = useState(true);
 
   const blobCount = 6;
 
@@ -40,7 +41,14 @@ export function AmbientCanvas({ enabled = true }: { enabled?: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (!enabled || !motionOk) return;
+    const onVis = () => setVisible(document.visibilityState === "visible");
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled || !motionOk || !visible) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -118,9 +126,9 @@ export function AmbientCanvas({ enabled = true }: { enabled?: boolean }) {
       if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [enabled, motionOk, dpr]);
+  }, [enabled, motionOk, visible, dpr]);
 
-  if (!enabled || !motionOk) return null;
+  if (!enabled || !motionOk || !visible) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0">

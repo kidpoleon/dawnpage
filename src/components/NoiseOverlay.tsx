@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 export function NoiseOverlay({ enabled = true }: { enabled?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [motionOk, setMotionOk] = useState(true);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const mql = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -18,7 +19,14 @@ export function NoiseOverlay({ enabled = true }: { enabled?: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (!enabled || !motionOk) return;
+    const onVis = () => setVisible(document.visibilityState === "visible");
+    onVis();
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled || !motionOk || !visible) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -59,9 +67,9 @@ export function NoiseOverlay({ enabled = true }: { enabled?: boolean }) {
     return () => {
       window.removeEventListener("resize", resize);
     };
-  }, [enabled, motionOk]);
+  }, [enabled, motionOk, visible]);
 
-  if (!enabled || !motionOk) return null;
+  if (!enabled || !motionOk || !visible) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[5] opacity-[0.18] mix-blend-overlay">

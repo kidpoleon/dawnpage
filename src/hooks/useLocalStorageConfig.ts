@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AppConfig } from "@/lib/schema";
 import { ensureConfig, loadConfigFromStorage, saveConfigToStorage } from "@/lib/storage";
 import { parseAppConfig } from "@/lib/schema";
+import { DEFAULT_CONFIG } from "@/lib/defaults";
 
 function sanitizeConfig(input: AppConfig): AppConfig {
   const widgets = input.widgets;
@@ -28,6 +29,7 @@ function sanitizeConfig(input: AppConfig): AppConfig {
 
 export function useLocalStorageConfig() {
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
     const c = sanitizeConfig(ensureConfig());
@@ -40,6 +42,7 @@ export function useLocalStorageConfig() {
       const base = prev ?? ensureConfig();
       const next = updater(base);
       saveConfigToStorage(next);
+      setLastSavedAt(Date.now());
       return next;
     });
   }, []);
@@ -50,11 +53,25 @@ export function useLocalStorageConfig() {
       const parsed = sanitizeConfig(parseAppConfig(json));
       saveConfigToStorage(parsed);
       setConfig(parsed);
+      setLastSavedAt(Date.now());
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Invalid config" };
     }
   }, []);
+
+  const validateConfig = useCallback(
+    (raw: string): { ok: true; config: AppConfig } | { ok: false; error: string } => {
+      try {
+        const json = JSON.parse(raw);
+        const parsed = sanitizeConfig(parseAppConfig(json));
+        return { ok: true, config: parsed };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : "Invalid config" };
+      }
+    },
+    []
+  );
 
   const exportConfig = useCallback(() => {
     const current = config ?? loadConfigFromStorage() ?? ensureConfig();
@@ -62,8 +79,10 @@ export function useLocalStorageConfig() {
   }, [config]);
 
   const resetConfig = useCallback(() => {
-    const c = ensureConfig();
-    setConfig(c);
+    const parsed = sanitizeConfig(parseAppConfig(DEFAULT_CONFIG));
+    saveConfigToStorage(parsed);
+    setConfig(parsed);
+    setLastSavedAt(Date.now());
   }, []);
 
   const ready = useMemo(() => config !== null, [config]);
@@ -74,7 +93,9 @@ export function useLocalStorageConfig() {
     setConfig,
     updateConfig,
     importConfig,
+    validateConfig,
     exportConfig,
     resetConfig,
+    lastSavedAt,
   };
 }

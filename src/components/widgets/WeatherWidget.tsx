@@ -8,6 +8,11 @@ type WeatherState =
   | { state: "ready"; temp: number; wind: number }
   | { state: "error"; message: string };
 
+export type WeatherStatus =
+  | { state: "idle" | "loading" }
+  | { state: "ready" }
+  | { state: "error"; message: string };
+
 export function WeatherWidget({
   title,
   latitude,
@@ -15,6 +20,7 @@ export function WeatherWidget({
   timezone,
   unit,
   onEdit,
+  onStatus,
 }: {
   title: string;
   latitude: number;
@@ -22,6 +28,7 @@ export function WeatherWidget({
   timezone: string;
   unit: "c" | "f";
   onEdit?: () => void;
+  onStatus?: (s: WeatherStatus) => void;
 }) {
   const [data, setData] = useState<WeatherState>({ state: "idle" });
 
@@ -38,6 +45,7 @@ export function WeatherWidget({
     (async () => {
       try {
         setData({ state: "loading" });
+        onStatus?.({ state: "loading" });
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error(`Weather failed (${res.status})`);
         const json = (await res.json()) as {
@@ -48,16 +56,19 @@ export function WeatherWidget({
         if (typeof temp !== "number" || typeof wind !== "number") throw new Error("Bad weather response");
         if (cancelled) return;
         setData({ state: "ready", temp, wind });
+        onStatus?.({ state: "ready" });
       } catch (e) {
         if (cancelled) return;
-        setData({ state: "error", message: e instanceof Error ? e.message : "Failed" });
+        const msg = e instanceof Error ? e.message : "Failed";
+        setData({ state: "error", message: msg });
+        onStatus?.({ state: "error", message: msg });
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, onStatus]);
 
   return (
     <div className="group relative h-full rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md">
