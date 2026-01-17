@@ -36,5 +36,5 @@ export function CursorGlow({ enabled = true }: { enabled?: boolean }) {
 
   if (!enabled || !motionOk) return null;
 
-  return <div className="pointer-events-none fixed inset-0 -z-10" style={style} />;
+  return <div className="pointer-events-none fixed inset-0 z-[6]" style={style} />;
 }

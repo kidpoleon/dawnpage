@@ -64,7 +64,7 @@ export function NoiseOverlay({ enabled = true }: { enabled?: boolean }) {
   if (!enabled || !motionOk) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.18] mix-blend-overlay">
+    <div className="pointer-events-none fixed inset-0 z-[5] opacity-[0.18] mix-blend-overlay">
       <canvas ref={canvasRef} className="h-full w-full" />
     </div>
   );

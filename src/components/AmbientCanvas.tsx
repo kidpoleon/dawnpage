@@ -123,7 +123,7 @@ export function AmbientCanvas({ enabled = true }: { enabled?: boolean }) {
   if (!enabled || !motionOk) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-30">
+    <div className="pointer-events-none fixed inset-0 z-0">
       <canvas ref={canvasRef} className="h-full w-full" />
     </div>
   );

@@ -28,6 +28,18 @@ async function tryFetchBingUrl(): Promise<string | null> {
   }
 }
 
+async function preloadImage(url: string): Promise<boolean> {
+  return await new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.loading = "eager";
+    img.referrerPolicy = "no-referrer";
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+
 export function Wallpaper({ enabled, dim, blurPx }: { enabled: boolean; dim: number; blurPx: number }) {
   const [wallpaper, setWallpaper] = useState<WallpaperState>({ state: "idle" });
 
@@ -38,9 +50,21 @@ export function Wallpaper({ enabled, dim, blurPx }: { enabled: boolean; dim: num
     (async () => {
       try {
         setWallpaper({ state: "loading" });
-        const url = (await tryFetchBingUrl()) ?? dailyPicsumUrl();
+        const picsum = dailyPicsumUrl();
+        const bing = (await tryFetchBingUrl()) ?? null;
+
+        const candidates = [bing, picsum].filter(Boolean) as string[];
+        for (const url of candidates) {
+          const ok = await preloadImage(url);
+          if (cancelled) return;
+          if (ok) {
+            setWallpaper({ state: "ready", url });
+            return;
+          }
+        }
+
         if (cancelled) return;
-        setWallpaper({ state: "ready", url });
+        setWallpaper({ state: "error", message: "Wallpaper image failed to load." });
       } catch (e) {
         if (cancelled) return;
         setWallpaper({ state: "error", message: e instanceof Error ? e.message : "Failed" });
@@ -53,10 +77,20 @@ export function Wallpaper({ enabled, dim, blurPx }: { enabled: boolean; dim: num
   }, [enabled]);
 
   if (!enabled) return null;
-  if (wallpaper.state !== "ready") return null;
+  if (wallpaper.state !== "ready") {
+    if (wallpaper.state === "error") {
+      return (
+        <div aria-hidden className="fixed inset-0 z-0">
+          <div className="absolute inset-0 bg-black" />
+          <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${dim})` }} />
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
-    <div aria-hidden className="fixed inset-0 -z-10">
+    <div aria-hidden className="fixed inset-0 z-0">
       <div
         className="absolute inset-0"
         style={{
